@@ -5,6 +5,15 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 STATE="${HOME}/.local/share/mhwilds-enhancement"
 GAME_DIR="${MHWILDS_DIR:-${HOME}/.steam/steam/steamapps/common/MonsterHunterWilds}"
+
+# A piped curl install has no local checkout. Fetch the packaged files once.
+if [ ! -f "$ROOT/autorun/SteamDeckEnhancement.lua" ] || [ ! -f "$ROOT/config/config.ini" ]; then
+  mkdir -p "$STATE/repo"
+  curl -fsSL -o "$STATE/repo/main.tar.gz" \
+    https://github.com/wyndhamharyata/mhwilds-steamdeck-enhancement/archive/refs/heads/main.tar.gz
+  tar -xzf "$STATE/repo/main.tar.gz" -C "$STATE/repo"
+  ROOT="$STATE/repo/mhwilds-steamdeck-enhancement-main"
+fi
 DOWNLOADS=1
 MORE_GRAPHICS_ZIP=""
 POST_FX_ZIP=""

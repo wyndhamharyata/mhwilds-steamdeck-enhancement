@@ -7,11 +7,10 @@ One installer and one REFramework mod for SteamOS. It sets up the game's graphic
 In Desktop Mode:
 
 ```sh
-git clone https://github.com/wyndhamharyata/mhwilds-steamdeck-enhancement.git
-cd mhwilds-steamdeck-enhancement
-chmod +x install.sh
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/wyndhamharyata/mhwilds-steamdeck-enhancement/main/install.sh | bash
 ```
+
+The installer fetches its own files, so no checkout is needed.
 
 The installer downloads and installs REFramework, OptiScaler and MAKO FG. It prints the launch option when it finishes. Paste that into:
 
