@@ -2,7 +2,7 @@
 
 All-in-One solution for best experience with Monster Hunter Wilds on Steam Deck. It is not only for the sake of frame rate, but also the best visual while targeting stable 30 FPS. 
 
-[![Video Title](https://youtube.com)](https://www.youtube.com/watch?v=24CGbJpu82Y)
+[![Monster Hunter Wilds on Steam Deck](https://img.youtube.com/vi/24CGbJpu82Y/maxresdefault.jpg)](https://www.youtube.com/watch?v=24CGbJpu82Y)
 
 
 ## Install
