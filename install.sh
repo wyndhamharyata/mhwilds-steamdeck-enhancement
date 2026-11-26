@@ -130,6 +130,8 @@ if [ "$DOWNLOADS" -eq 1 ]; then
   fetch "https://github.com/eugeniosegala/MAKO/releases/download/render-v5.0.0/MAKO-Renderer-v5.0.0-linux.tar.xz" MAKO-Renderer-v5.0.0-linux.tar.xz
   opti_url="$(github_asset optiscaler/OptiScaler Optiscaler_0.9.5-final.20261116.7z v0.9.5)"
   fetch "$opti_url" OptiScaler.7z
+  cyboman_url="$(github_asset zgauthier2000/fsr4-shader-performance-overrides fsr4.1.2-igpu-cyboman-rdna2-2026-11-22.7z dll-2026-11-22)"
+  fetch "$cyboman_url" CybomanFSR.7z
 fi
 
 log "Installing REFramework"
@@ -151,6 +153,21 @@ if command -v 7z >/dev/null 2>&1; then
 else
   log "7z not found; keeping existing OptiScaler files. Install 7z to update them."
 fi
+
+FSR_DIR="$HOME/.local/share/fsr-switch/cyboman"
+log "Installing cyboman FSR 4.1.2 Lite Lossy upscaler"
+rm -rf "$STATE/cyboman"
+mkdir -p "$STATE/cyboman" "$FSR_DIR"
+7z x -y -o"$STATE/cyboman" "$CACHE/CybomanFSR.7z" >/dev/null
+lossy_dll="$STATE/cyboman/4.1.2l-lossy/amd_fidelityfx_upscaler_dx12.dll"
+[ -f "$lossy_dll" ] || die "4.1.2l-lossy upscaler DLL missing from cyboman archive"
+backup_if_present "$FSR_DIR/amd_fidelityfx_upscaler_dx12.dll"
+cp -f "$lossy_dll" "$FSR_DIR/amd_fidelityfx_upscaler_dx12.dll"
+for dll in amd_fidelityfx_dx12.dll amd_fidelityfx_framegeneration_dx12.dll; do
+  if [ ! -e "$FSR_DIR/$dll" ] && [ -f "$GAME_DIR/$dll" ]; then
+    cp -f "$GAME_DIR/$dll" "$FSR_DIR/$dll"
+  fi
+done
 
 log "Installing MAKO Renderer 5.0.0"
 rm -rf "$STATE/mako"
@@ -197,8 +214,8 @@ for json in SteamDeckEnhancement.json; do
   cp -f "$ROOT/config/$json" "$DATA/$json"
 done
 
-if [ -d "$HOME/.local/share/fsr-switch/cyboman" ]; then
-  python3 - "$HOME/.local/share/fsr-switch/cyboman" "$GAME_DIR/OptiScaler.ini" <<'PY'
+if [ -f "$FSR_DIR/amd_fidelityfx_upscaler_dx12.dll" ]; then
+  python3 - "$FSR_DIR" "$GAME_DIR/OptiScaler.ini" <<'PY'
 import pathlib, sys
 folder = pathlib.Path(sys.argv[1])
 ini = pathlib.Path(sys.argv[2])
@@ -217,7 +234,7 @@ for key, name in (("FfxDx12Path", "amd_fidelityfx_dx12.dll"),
         text = "".join(lines)
 ini.write_text(text, errors="surrogateescape")
 PY
-  log "Linked optional cyboman FSR 4.1.2 Lite files"
+  log "Linked cyboman FSR 4.1.2 Lite Lossy files"
 else
   log "cyboman FSR files not found; OptiScaler will use its bundled FFX files"
 fi

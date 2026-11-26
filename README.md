@@ -12,7 +12,7 @@ curl -fsSL https://github.com/wyndhamharyata/mhwilds-steamdeck-enhancement/raw/r
 
 The installer fetches its own files, so no checkout is needed.
 
-The installer downloads and installs REFramework, OptiScaler and MAKO FG, then writes the Steam launch option automatically. Restart Steam once so it reads the change.
+The installer downloads and installs REFramework, OptiScaler, MAKO FG and the cyboman FSR 4.1.2 Lite Lossy upscaler, then writes the Steam launch option automatically. Restart Steam once so it reads the change.
 
 Launch the game and press **Reset Scripts** in REFramework.
 
@@ -47,7 +47,8 @@ Quest targets and useful animals are never removed. Changes save immediately.
 - Reduces distant foliage, grass, mesh, light and shadow work.
 - Keeps nearby savannah grass visible.
 - Uses MAKO FG for smooth displayed motion. It does not raise the game's real FPS.
-- OptiScaler is used only for upscaling. Paid Lossless Scaling is not required.
+- OptiScaler is used only for upscaling, with the cyboman FSR 4.1.2 Lite Lossy DLL. Paid Lossless Scaling is not required.
+- The cyboman DLL is a modified binary. Use it in single-player only, and keep it away from anti-cheat games.
 
 ## Options
 
