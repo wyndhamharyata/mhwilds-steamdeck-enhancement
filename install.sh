@@ -2,7 +2,8 @@
 # Turnkey installer for Monster Hunter Wilds on SteamOS/Steam Deck.
 set -euo pipefail
 
-ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+SOURCE="${BASH_SOURCE[0]:-$0}"
+ROOT="$(cd -- "$(dirname -- "$SOURCE")" && pwd -P)"
 STATE="${HOME}/.local/share/mhwilds-enhancement"
 GAME_DIR="${MHWILDS_DIR:-${HOME}/.steam/steam/steamapps/common/MonsterHunterWilds}"
 
