@@ -20,7 +20,9 @@ It will also update the Steam launch option automatically.
 
 ## Strongly recommended: Nexus object culling
 
-One of the key features of this mod is aggressive selective culling. Using the Nexus DLL culler is strongly recommended for more selective culling and better visual coverage. The built-in culler remains available as a fallback. During installation of the script above, it asks for the **More graphics options** ZIP. You can leave it blank only if you want the built-in fallback (though not very good). 
+One of the key features of this mod is aggressive selective culling. Using the Nexus DLL culler is strongly recommended for more selective culling and better visual coverage. The built-in culler remains available as a fallback. 
+
+During installation of the script above, it asks for the **More graphics options** ZIP. You can leave it blank only if you want the built-in fallback (though not very good). 
 
 To install it manually instead:
 
