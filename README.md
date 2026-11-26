@@ -12,11 +12,9 @@ curl -fsSL https://github.com/wyndhamharyata/mhwilds-steamdeck-enhancement/raw/r
 
 The installer fetches its own files, so no checkout is needed.
 
-The installer downloads and installs REFramework, OptiScaler and MAKO FG. It prints the launch option when it finishes. Paste that into:
+The installer downloads and installs REFramework, OptiScaler and MAKO FG, then writes the Steam launch option automatically. Restart Steam once so it reads the change.
 
-**Steam → Properties → General → Launch Options**
-
-Then launch the game once and press **Reset Scripts** in REFramework.
+Launch the game and press **Reset Scripts** in REFramework.
 
 ## In-game controls
 

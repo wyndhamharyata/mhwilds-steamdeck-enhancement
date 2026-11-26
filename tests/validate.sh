@@ -18,6 +18,20 @@ assert 'FGInput = nofg' in opti
 assert 'FGOutput = nofg' in opti
 PY
 
+python3 - "$ROOT" <<'PY'
+import pathlib, subprocess, tempfile
+helper = pathlib.Path(__import__('sys').argv[1]) / 'steam-launch-options.py'
+sample = '"Apps"\n{\n\t"2246340"\n\t{\n\t\t"LaunchOptions"\t\t"old"\n\t}\n\t"123"\n\t{\n\t\t"LaunchOptions"\t\t"keep"\n\t}\n}\n'
+path = pathlib.Path(tempfile.mkdtemp()) / 'localconfig.vdf'
+path.write_text(sample)
+result = subprocess.run(['python3', str(helper), str(path), 'MAKO=1 %command%'], capture_output=True, text=True)
+assert result.returncode == 0, result.stderr
+written = path.read_text()
+assert 'MAKO=1 %command%' in written
+assert '"keep"' in written
+print('steam launch options ok')
+PY
+
 if command -v luac >/dev/null 2>&1; then
   luac -p "$ROOT/autorun/SteamDeckEnhancement.lua"
   echo "lua ok"

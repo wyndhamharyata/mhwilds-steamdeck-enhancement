@@ -7,14 +7,6 @@ ROOT="$(cd -- "$(dirname -- "$SOURCE")" && pwd -P)"
 STATE="${HOME}/.local/share/mhwilds-enhancement"
 GAME_DIR="${MHWILDS_DIR:-${HOME}/.steam/steam/steamapps/common/MonsterHunterWilds}"
 
-# A piped curl install has no local checkout. Fetch the packaged files once.
-if [ ! -f "$ROOT/autorun/SteamDeckEnhancement.lua" ] || [ ! -f "$ROOT/config/config.ini" ]; then
-  mkdir -p "$STATE/repo"
-  curl -fsSL -o "$STATE/repo/main.tar.gz" \
-    https://github.com/wyndhamharyata/mhwilds-steamdeck-enhancement/archive/refs/heads/main.tar.gz
-  tar -xzf "$STATE/repo/main.tar.gz" -C "$STATE/repo"
-  ROOT="$STATE/repo/mhwilds-steamdeck-enhancement-main"
-fi
 DOWNLOADS=1
 
 usage() {
@@ -41,7 +33,16 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-for tool in curl tar unzip python3; do command -v "$tool" >/dev/null 2>&1 || die "Missing required tool: $tool"; done
+# A piped curl install has no local checkout. Fetch the packaged files once.
+if [ ! -f "$ROOT/autorun/SteamDeckEnhancement.lua" ] || [ ! -f "$ROOT/config/config.ini" ]; then
+  mkdir -p "$STATE/repo"
+  curl -fsSL -o "$STATE/repo/main.tar.gz" \
+    https://github.com/wyndhamharyata/mhwilds-steamdeck-enhancement/archive/refs/heads/main.tar.gz
+  tar -xzf "$STATE/repo/main.tar.gz" -C "$STATE/repo"
+  ROOT="$STATE/repo/mhwilds-steamdeck-enhancement-main"
+fi
+
+for tool in curl tar unzip 7z python3; do command -v "$tool" >/dev/null 2>&1 || die "Missing required tool: $tool"; done
 [ -d "$GAME_DIR" ] || die "Game directory not found: $GAME_DIR"
 [ -f "$GAME_DIR/MonsterHunterWilds.exe" ] || die "Not a Monster Hunter Wilds directory: $GAME_DIR"
 if ps -eo comm 2>/dev/null | grep -qi '^MonsterHunter'; then die "Close Monster Hunter Wilds before installing"; fi
@@ -112,7 +113,7 @@ log "Installing MAKO Renderer 5.0.0"
 rm -rf "$STATE/mako"
 mkdir -p "$STATE/mako"
 tar -xJf "$CACHE/MAKO-Renderer-v5.0.0-linux.tar.xz" -C "$STATE/mako"
-MAKO_INSTALLER_ASSUME_YES=1 "$STATE/mako/Install MAKO Renderer"
+MAKO_INSTALLER_ASSUME_YES=1 MAKO_INSTALLER_NO_LAUNCH=1 "$STATE/mako/Install MAKO Renderer"
 
 cat > "$HOME/.config/mako-render/conf.toml" <<'EOF'
 version = 2
@@ -186,6 +187,14 @@ fi
 
 LAUNCH='WINEDLLOVERRIDES="amdxc64=n,b;dinput8=n,b;dxgi=n,b" ~/.local/bin/mako-launch %command%'
 printf '%s\n' "$LAUNCH" > "$STATE/launch-options.txt"
-log "Done. Set Steam launch options for Monster Hunter Wilds to:"
-printf '  %s\n' "$LAUNCH"
-log "Start the game once, then press Reset Scripts in REFramework."
+patched=0
+for vdf in "$HOME"/.local/share/Steam/userdata/*/config/localconfig.vdf; do
+  [ -f "$vdf" ] || continue
+  backup_if_present "$vdf"
+  if python3 "$ROOT/steam-launch-options.py" "$vdf" "$LAUNCH"; then patched=1; fi
+done
+if [ "$patched" -eq 0 ]; then
+  log "Could not edit Steam launch options automatically. Set them manually to: $LAUNCH"
+fi
+log "Done. Restart Steam once so it reads the launch options."
+log "Start the game, then press Reset Scripts in REFramework."
