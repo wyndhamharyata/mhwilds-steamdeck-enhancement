@@ -18,6 +18,10 @@ local RESTORE_DELAY = 0.15
 local FAR_DISTANCE = 100
 local FAR_UPDATE_EVERY = 8
 
+local dll = io.open("reframework/plugins/object_culling.dll", "rb")
+local HAS_OBJECT_CULLING_DLL = dll ~= nil
+if dll then dll:close() end
+
 local sceneManager = sdk.get_native_singleton("via.SceneManager")
 local sceneManagerType = sdk.find_type_definition("via.SceneManager")
 local stopwatch = sdk.find_type_definition("System.Diagnostics.Stopwatch"):get_method("GetTimestamp")
@@ -35,24 +39,13 @@ local enabledFoliagePasses = { DrawShadowCast = true, DrawFarCascadeShadowCast =
 local postFx = { ready = false }
 local function applyPostFx()
   if not postFx.ready then return end
-  local t, p, ds = postFx.tone, postFx.post, postFx.display
+  local t, p = postFx.tone, postFx.post
   t:call("setVignetting", 2)
   t:call("setTemporalAA", 5)
   t:call("setTemporalAAAlgorithm", 1)
   t:call("setTemporalJitterScale", 0)
   t:call("set_Sharpness", 0.431)
-  t:call("set_Contrast", 0.633)
-  t:call("set_VignettingBrightness", 0.291)
-  t:call("set_EV", 2.0)
-  t:call("set_EnableLocalExposure", true)
-  t:call("setLocalExposureType", 1)
   p:call("get_FilmGrain"):call("set_BlendRate", 0)
-  ds:call("set_Gamma", 1.045)
-  ds:call("set_OutputLowerLimit", -0.141)
-  ds:call("set_OutputUpperLimit", 2.674)
-  ds:call("set_GammaForOverlay", 1.179)
-  ds:call("set_OutputLowerLimitForOverlay", -0.072)
-  ds:call("set_OutputUpperLimitForOverlay", 0.805)
 end
 
 local function applyRendererProfile()
@@ -154,18 +147,19 @@ local function scanScene()
       end
     end
     local meshes = scene:call("findComponents(System.Type)", sdk.typeof("via.render.Mesh"))
-    if meshes then
+    if meshes and not HAS_OBJECT_CULLING_DLL then
       for i = 0, meshes:get_size() - 1 do
         local c = meshes:get_element(i)
         local go = c:call("get_GameObject")
         local name = go and go:call("get_Name") or ""
         local prefix = name:sub(1, 2)
-        if (prefix == "sm" or prefix == "Gm" or prefix == "st" or prefix == "Em" or prefix == "Pr") and not isPlayer(go) then
+        if (prefix == "sm" or prefix == "Gm" or prefix == "st" or prefix == "Pr") and not isPlayer(go) then
           local p = go:call("get_Transform"):call("get_Position")
           local index = #state.meshes + 1
           local grass = name:find("Grass") ~= nil or name:find("Inaho") ~= nil
-          local culled = not grass and index % 10 < 7
-          local draw = c:call("get_DrawDefault")
+          local tent = name:sub(1, 5) == "Gm100"
+          local culled = not grass and not tent and index % 10 < 7
+          local draw = tent or c:call("get_DrawDefault")
           c:call("set_DrawDefault", draw and not culled)
           state.meshes[index] = { c = c, x = p.x, y = p.y, z = p.z,
             draw = draw, hidden = false, culled = culled }
@@ -213,10 +207,7 @@ re.on_application_entry("WaitForVblank", function()
   if state.needsScan then scanScene() end
   if not postFx.ready then initPostFx() end
   if t - state.lastRenderer >= 10 then applyRendererProfile() state.lastRenderer = t end
-  if postFx.ready then
-    postFx.tone:call("setVignetting", 2)
-    postFx.tone:call("set_VignettingBrightness", 0.291)
-  end
+  if postFx.ready then postFx.tone:call("setVignetting", 2) end
   local cam = sdk.get_primary_camera()
   if not cam then return end
   local t = now()

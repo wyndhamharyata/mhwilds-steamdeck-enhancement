@@ -8,12 +8,14 @@ STATE="${HOME}/.local/share/mhwilds-enhancement"
 GAME_DIR="${MHWILDS_DIR:-${HOME}/.steam/steam/steamapps/common/MonsterHunterWilds}"
 
 DOWNLOADS=1
+MORE_GRAPHICS_ZIP=""
 
 usage() {
   cat <<'EOF'
 Usage: install.sh [options]
 
   --game-dir DIR       MonsterHunterWilds directory
+  --more-graphics ZIP  Optional More graphics options Nexus ZIP
   --offline            Skip GitHub downloads; use cached files in ~/.local/share/mhwilds-enhancement/cache
   --help               Show this help
 
@@ -27,6 +29,7 @@ die() { printf '[mhwilds-enhancement] ERROR: %s\n' "$*" >&2; exit 1; }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --game-dir) GAME_DIR="$2"; shift 2 ;;
+    --more-graphics) MORE_GRAPHICS_ZIP="$2"; shift 2 ;;
     --offline) DOWNLOADS=0; shift ;;
     --help) usage; exit 0 ;;
     *) die "Unknown option: $1" ;;
@@ -55,6 +58,31 @@ BACKUP="$STATE/backups/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$AUTORUN" "$DATA" "$PLUGINS" "$CACHE" "$BACKUP" "$HOME/.config/mako-render"
 log "Game: $GAME_DIR"
 log "Backup: $BACKUP"
+
+if [ -z "$MORE_GRAPHICS_ZIP" ] && [ -t 1 ]; then
+  printf 'Optional More graphics options Nexus ZIP (blank to use built-in culler): ' > /dev/tty
+  read -r MORE_GRAPHICS_ZIP < /dev/tty || true
+fi
+if [ -n "$MORE_GRAPHICS_ZIP" ]; then
+  [ -f "$MORE_GRAPHICS_ZIP" ] || die "ZIP not found: $MORE_GRAPHICS_ZIP"
+  log "Installing optional More graphics options culler"
+  rm -rf "$STATE/more-graphics"
+  mkdir -p "$STATE/more-graphics"
+  unzip -q -o "$MORE_GRAPHICS_ZIP" -d "$STATE/more-graphics"
+  culling_dll="$(find "$STATE/more-graphics" -path '*/reframework/plugins/object_culling.dll' -print -quit)"
+  graphics_lua="$(find "$STATE/more-graphics" -path '*/reframework/autorun/More graphics options.lua' -print -quit)"
+  [ -n "$culling_dll" ] && [ -n "$graphics_lua" ] || die "ZIP must contain reframework/plugins/object_culling.dll and reframework/autorun/More graphics options.lua"
+  cp -f "$culling_dll" "$PLUGINS/object_culling.dll"
+  cp -f "$graphics_lua" "$AUTORUN/More graphics options.lua"
+  python3 - "$DATA/detail_config.json" "$DATA/culling_plugin_config.txt" <<'PY'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+settings = json.loads(path.read_text()) if path.exists() else {}
+settings["culling_amount"] = 7
+path.write_text(json.dumps(settings, indent=4) + "\n")
+pathlib.Path(sys.argv[2]).write_text("7\n")
+PY
+fi
 
 github_asset() {
   local repo="$1" name="$2" tag="${3:-latest}" json url

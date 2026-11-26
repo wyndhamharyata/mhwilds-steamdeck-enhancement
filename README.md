@@ -16,6 +16,19 @@ The installer downloads and installs REFramework, OptiScaler and MAKO FG, then w
 
 Launch the game and press **Reset Scripts** in REFramework.
 
+## Optional: Nexus object culling
+
+The built-in culler works without Nexus mods. The installer asks for an optional **More graphics options** ZIP; leave it blank to keep the built-in culler. For a non-interactive install, pass `--more-graphics /path/to/mod.zip`.
+
+To install it manually instead:
+
+1. Download **More graphics options** manually from [Nexus Mods](https://www.nexusmods.com/monsterhunterwilds/mods/816).
+2. From the ZIP, copy `reframework/plugins/object_culling.dll` and `reframework/autorun/More graphics options.lua` into the matching folders in the game directory. Create `plugins` if needed.
+3. Launch the game. In the **More graphics options** REFramework menu, set environmental object culling to **7**. Leave its other graphics overrides disabled so they do not fight this preset.
+4. Press **Reset Scripts**.
+
+When `object_culling.dll` is present, the built-in mesh culler turns itself off. Delete the DLL to return to the built-in culler. The installer never downloads Nexus files.
+
 ## In-game controls
 
 Open `Steam Deck Performance` in the REFramework menu.
@@ -30,7 +43,7 @@ Quest targets and useful animals are never removed. Changes save immediately.
 ## What the preset does
 
 - Keeps the render resolution, texture quality and volumetric fog.
-- Applies the tested contrast, sharpness, exposure, vignette, shadow resolution and mesh/SpeedTree LOD values.
+- Applies the tested sharpness, vignette, shadow resolution and mesh/SpeedTree LOD values.
 - Reduces distant foliage, grass, mesh, light and shadow work.
 - Keeps nearby savannah grass visible.
 - Uses MAKO FG for smooth displayed motion. It does not raise the game's real FPS.
@@ -39,6 +52,7 @@ Quest targets and useful animals are never removed. Changes save immediately.
 ## Options
 
 - `--game-dir PATH` — use a non-default game install path.
+- `--more-graphics ZIP` — install the optional Nexus object culler without prompting.
 - `--offline` — reuse files already cached by a previous install.
 
 ## Uninstall
