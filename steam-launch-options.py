@@ -39,11 +39,14 @@ def patch(path, value):
     changed = 0
     for index, line in enumerate(lines):
         stripped = line.strip()
-        if pending_app and stripped.startswith("{"):
-            app_depth = depth + 1
-            pending_app = False
-            depth += brace_delta(line)
-            continue
+        if pending_app:
+            if stripped.startswith("{"):
+                app_depth = depth + 1
+                pending_app = False
+                depth += brace_delta(line)
+                continue
+            if stripped:
+                pending_app = False
         match = KEY.match(line)
         if app_depth is None and match and match.group(1) == APP:
             pending_app = match.group(2) != "{"
