@@ -2,6 +2,8 @@
 
 All-in-One solution for best experience with Monster Hunter Wilds on Steam Deck. It is not only for the sake of frame rate, but also the best visual while targeting stable 30 FPS. 
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/24CGbJpu82Y?si=Ib7RvDX9zhoypxWd" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## Install
 
 Switch to desktop mode, then open terminal (Konsole) and run the following script:
