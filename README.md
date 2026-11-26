@@ -1,4 +1,4 @@
-# Monster Hunter Wilds — Steam Deck Enhancement
+# Monster Hunter Wilds: Steam Deck Enhancement
 
 All-in-One solution for best experience with Monster Hunter Wilds on Steam Deck. It is not only for the sake of frame rate, but also the best visual while targeting stable 30 FPS. 
 
