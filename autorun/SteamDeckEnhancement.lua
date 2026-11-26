@@ -25,7 +25,7 @@ local function currentScene()
   return sdk.call_native_func(sceneManager, sceneManagerType, "get_CurrentScene()")
 end
 
-local state = { needsScan = true, cloudTurning = false, lastMove = 0, nextFog = 0,
+local state = { needsScan = true, cloudTurning = false, lastMove = 0, nextFog = 0, lastRenderer = 0,
   meshIndex = 1, sdfIndex = 1, grassIndex = 1, dirty = false, sdfDirty = false, grassDirty = false }
 local foliageFlags = { "DrawShadowCast", "DrawFarCascadeShadowCast", "DrawSignedDistanceField", "DrawVoxelize", "DrawEnvmap" }
 local enabledFoliagePasses = { DrawShadowCast = true, DrawFarCascadeShadowCast = false,
@@ -54,6 +54,18 @@ local function applyPostFx()
   ds:call("set_OutputUpperLimitForOverlay", 0.805)
 end
 
+local function applyRendererProfile()
+  local MR, MRt = sdk.get_native_singleton("via.render.MeshRenderer"), sdk.find_type_definition("via.render.MeshRenderer")
+  local ST, STt = sdk.get_managed_singleton("via.speedtree.SpeedTreeMasterInstance"), sdk.find_type_definition("via.speedtree.SpeedTreeMasterInstance")
+  local R, Rt = sdk.get_native_singleton("via.render.Renderer"), sdk.find_type_definition("via.render.Renderer")
+  sdk.call_native_func(MR, MRt, "set_LodBias", 1)
+  sdk.call_native_func(ST, STt, "set_LodBias", 3)
+  sdk.call_native_func(ST, STt, "set_StreamingMeshMinimumLod", 5)
+  sdk.call_native_func(R, Rt, "set_SmallObjectCullingRatio", 24.0)
+  local L, Lt = sdk.get_managed_singleton("via.render.LightRenderer"), sdk.find_type_definition("via.render.LightRenderer")
+  sdk.call_native_func(L, Lt, "set_ShadowResolution", SHADOW_RESOLUTION)
+end
+
 local function initPostFx()
   local ok, result = pcall(function()
     local cm = sdk.get_managed_singleton("app.CameraManager")
@@ -65,8 +77,7 @@ local function initPostFx()
     local gm = sdk.get_managed_singleton("app.GraphicsManager")
     postFx.display = gm and gm:call("get_DisplaySettings")
     if not (postFx.tone and postFx.post and postFx.display) then return false end
-    local L, Lt = sdk.get_managed_singleton("via.render.LightRenderer"), sdk.find_type_definition("via.render.LightRenderer")
-    sdk.call_native_func(L, Lt, "set_ShadowResolution", SHADOW_RESOLUTION)
+    applyRendererProfile()
     return true
   end)
   postFx.ready = ok and result == true
@@ -175,6 +186,11 @@ end
 re.on_application_entry("WaitForVblank", function()
   if state.needsScan then scanScene() end
   if not postFx.ready then initPostFx() end
+  if t - state.lastRenderer >= 10 then applyRendererProfile() state.lastRenderer = t end
+  if postFx.ready then
+    postFx.tone:call("setVignetting", 2)
+    postFx.tone:call("set_VignettingBrightness", 0.291)
+  end
   local cam = sdk.get_primary_camera()
   if not cam then return end
   local t = now()
