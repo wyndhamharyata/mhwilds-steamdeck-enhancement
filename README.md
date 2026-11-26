@@ -37,22 +37,7 @@ Quest targets and useful animals are never removed. Changes save immediately.
 - Uses MAKO FG for smooth displayed motion. It does not raise the game's real FPS.
 - OptiScaler is used only for upscaling. Paid Lossless Scaling is not required.
 
-## Requirements
-
-The installer handles GitHub downloads. It needs these three community REFramework mods already installed, or their zips passed to the installer:
-
-```sh
-./install.sh \
-  --more-graphics ZIP \
-  --post-fx ZIP \
-  --fog ZIP
-```
-
-- [More graphics options](https://www.nexusmods.com/monsterhunterwilds/mods/816)
-- [Disable Post Processing Effects](https://www.nexusmods.com/monsterhunterwilds/mods/221)
-- [Tweak volumetric fog(s)](https://www.nexusmods.com/monsterhunterwilds/mods/455)
-
-Other options:
+## Options
 
 - `--game-dir PATH` — use a non-default game install path.
 - `--offline` — reuse files already cached by a previous install.

@@ -16,23 +16,16 @@ if [ ! -f "$ROOT/autorun/SteamDeckEnhancement.lua" ] || [ ! -f "$ROOT/config/con
   ROOT="$STATE/repo/mhwilds-steamdeck-enhancement-main"
 fi
 DOWNLOADS=1
-MORE_GRAPHICS_ZIP=""
-POST_FX_ZIP=""
-FOG_ZIP=""
 
 usage() {
   cat <<'EOF'
 Usage: install.sh [options]
 
   --game-dir DIR       MonsterHunterWilds directory
-  --more-graphics ZIP  More graphics options Nexus zip (Lua + object_culling.dll)
-  --post-fx ZIP        Disable Post Processing Effects zip
-  --fog ZIP            Volumetric fog tweak zip
   --offline            Skip GitHub downloads; use cached files in ~/.local/share/mhwilds-enhancement/cache
   --help               Show this help
 
-Nexus zips are only needed on a fresh install. Existing installations are kept.
-Paid LSFG is never downloaded or enabled.
+No paid frame generator is downloaded or enabled.
 EOF
 }
 
@@ -42,9 +35,6 @@ die() { printf '[mhwilds-enhancement] ERROR: %s\n' "$*" >&2; exit 1; }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --game-dir) GAME_DIR="$2"; shift 2 ;;
-    --more-graphics) MORE_GRAPHICS_ZIP="$2"; shift 2 ;;
-    --post-fx) POST_FX_ZIP="$2"; shift 2 ;;
-    --fog) FOG_ZIP="$2"; shift 2 ;;
     --offline) DOWNLOADS=0; shift ;;
     --help) usage; exit 0 ;;
     *) die "Unknown option: $1" ;;
@@ -88,15 +78,6 @@ fetch() {
 backup_if_present() {
   local path="$1"
   if [ -e "$path" ]; then cp -a "$path" "$BACKUP/$(basename "$path")"; fi
-}
-
-install_zip() {
-  local zip="$1" dest="$2" label="$3"
-  [ -n "$zip" ] || return 0
-  [ -f "$zip" ] || die "$label zip not found: $zip"
-  log "Installing $label from $zip"
-  unzip -oq "$zip" -d "$STATE/extract-$label"
-  cp -a "$STATE/extract-$label/"* "$dest/" 2>/dev/null || true
 }
 
 if [ "$DOWNLOADS" -eq 1 ]; then
@@ -153,26 +134,6 @@ adaptive = false
 base_fps_cap = 0
 EOF
 
-install_zip "$MORE_GRAPHICS_ZIP" "$AUTORUN" more-graphics
-install_zip "$POST_FX_ZIP" "$AUTORUN" post-fx
-install_zip "$FOG_ZIP" "$AUTORUN" fog
-
-missing=()
-[ -f "$AUTORUN/More graphics options.lua" ] || missing+=("More graphics options")
-[ -f "$PLUGINS/object_culling.dll" ] || missing+=("object_culling.dll from More graphics options")
-[ -f "$AUTORUN/MHWilds_DisablePostProcessingEffects.lua" ] || missing+=("Disable Post Processing Effects")
-[ -f "$AUTORUN/mhwilds_tweak_volumetric_fogs.lua" ] || missing+=("Tweak volumetric fog(s)")
-if [ "${#missing[@]}" -gt 0 ]; then
-  printf '[mhwilds-enhancement] Missing dependencies:\n' >&2
-  printf '  - %s\n' "${missing[@]}" >&2
-  cat >&2 <<'EOF'
-Download the zips and rerun with:
-  ./install.sh --more-graphics ZIP --post-fx ZIP --fog ZIP
-Links are in README.md.
-EOF
-  exit 1
-fi
-
 log "Installing consolidated REFramework mod"
 for old in TurnTrim.lua GrassTrim.lua FarThrottle.lua LightTrim.lua ReduceZako.lua; do
   if [ -e "$AUTORUN/$old" ]; then
@@ -187,7 +148,7 @@ backup_if_present "$GAME_DIR/config.ini"
 backup_if_present "$GAME_DIR/OptiScaler.ini"
 cp -f "$ROOT/config/config.ini" "$GAME_DIR/config.ini"
 cp -f "$ROOT/config/OptiScaler.ini" "$GAME_DIR/OptiScaler.ini"
-for json in SteamDeckEnhancement.json detail_config.json MHWilds_DisablePostProcessingEffects.lua.json mhwilds_tweak_volumetric_fogs.json; do
+for json in SteamDeckEnhancement.json; do
   backup_if_present "$DATA/$json"
   cp -f "$ROOT/config/$json" "$DATA/$json"
 done
