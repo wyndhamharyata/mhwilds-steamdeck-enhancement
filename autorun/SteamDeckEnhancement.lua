@@ -13,6 +13,7 @@ local FOG_START_DISTANCE = 30.0
 local FOG_DENSITY = 0.65
 local CLOUD_STEPS_WHILE_TURNING = 32
 local SHADOW_RESOLUTION = 218
+local EFFECT_DENSITY = 0.465
 local RESTORE_DELAY = 0.15
 local FAR_DISTANCE = 100
 local FAR_UPDATE_EVERY = 8
@@ -64,6 +65,25 @@ local function applyRendererProfile()
   sdk.call_native_func(R, Rt, "set_SmallObjectCullingRatio", 24.0)
   local L, Lt = sdk.get_managed_singleton("via.render.LightRenderer"), sdk.find_type_definition("via.render.LightRenderer")
   sdk.call_native_func(L, Lt, "set_ShadowResolution", SHADOW_RESOLUTION)
+  sdk.call_native_func(L, Lt, "set_ShadowFilter", 0)
+  local S, St = sdk.get_native_singleton("via.render.Sampler"), sdk.find_type_definition("via.render.Sampler")
+  sdk.call_native_func(S, St, "set_Bias", 1.016)
+  local G, Gt = sdk.get_native_singleton("via.render.GIPointCloudManager"), sdk.find_type_definition("via.render.GIPointCloudManager")
+  sdk.call_native_func(G, Gt, "set_MinLod", 0)
+  sdk.call_native_func(G, Gt, "set_LodBaseDistance", 8.0)
+  local scene = currentScene()
+  if scene then
+    local probes = scene:call("findComponents(System.Type)", sdk.typeof("via.render.DynamicProbeGI"))
+    for i = 0, probes:get_size() - 1 do
+      local c = probes:get_element(i)
+      c:call("set_VoxelResolution", 0)
+      c:call("set_GIPRadianceVolumeStartLodNo", 5)
+      c:call("set_GIPRadianceVolumeStartDistanceEnable", true)
+      c:call("set_GIPRadianceVolumeStartDistance", 0.0)
+      c:call("set_TransparentProbeRayNum", 0)
+      c:call("set_VolumeNum", 7)
+    end
+  end
 end
 
 local function initPostFx()
@@ -139,10 +159,16 @@ local function scanScene()
         local c = meshes:get_element(i)
         local go = c:call("get_GameObject")
         local name = go and go:call("get_Name") or ""
-        if name:sub(1, 2) == "sm" and not isPlayer(go) then
+        local prefix = name:sub(1, 2)
+        if (prefix == "sm" or prefix == "Gm" or prefix == "st" or prefix == "Em" or prefix == "Pr") and not isPlayer(go) then
           local p = go:call("get_Transform"):call("get_Position")
-          state.meshes[#state.meshes + 1] = { c = c, x = p.x, y = p.y, z = p.z,
-            draw = c:call("get_DrawDefault"), hidden = false }
+          local index = #state.meshes + 1
+          local grass = name:find("Grass") ~= nil or name:find("Inaho") ~= nil
+          local culled = not grass and index % 10 < 7
+          local draw = c:call("get_DrawDefault")
+          c:call("set_DrawDefault", draw and not culled)
+          state.meshes[index] = { c = c, x = p.x, y = p.y, z = p.z,
+            draw = draw, hidden = false, culled = culled }
         end
       end
     end
@@ -163,7 +189,7 @@ local function updateChunk(items, index, dirty, cp, radius, margin, flag, settin
     local hidden = m[setting] and d2 > show2 or d2 > hide2
     if hidden ~= m[setting] then
       m[setting] = hidden
-      if flag == "DrawDefault" then m.c:call("set_DrawDefault", m.draw and not hidden)
+      if flag == "DrawDefault" then m.c:call("set_DrawDefault", m.draw and not hidden and not m.culled)
       else m.c:call("set_DrawSignedDistanceField", not hidden and m.orig.DrawSignedDistanceField or false) end
     end
   end
@@ -179,7 +205,7 @@ local function restoreScene()
   for _, m in ipairs(state.foliage or {}) do
     for flag, original in pairs(m.orig) do m.c:call("set_" .. flag, original) end
   end
-  for _, m in ipairs(state.meshes or {}) do m.c:call("set_DrawDefault", m.draw) m.hidden = false end
+  for _, m in ipairs(state.meshes or {}) do m.c:call("set_DrawDefault", m.draw) m.hidden, m.culled = false, false end
   state.cloudTurning = false
 end
 
@@ -341,6 +367,23 @@ sdk.hook(sdk.find_type_definition("app.EnemyCharacter"):get_method("update()"), 
   end
   if i.far and (enemyFrame + addr // 16) % FAR_UPDATE_EVERY ~= 0 then return sdk.PreHookResult.SKIP_ORIGINAL end
 end, function(retval) return retval end)
+
+local function thinEffects(obj)
+  if not obj then return end
+  local ok, players = pcall(function() return obj:call("getAllPlayers") end)
+  if not ok or not players then return end
+  local okItems, items = pcall(function() return players:get_field("_items") end)
+  if not okItems or not items then return end
+  for i = 0, #items - 1 do
+    pcall(function()
+      local q = items[i]:call("get_QualitySettings")
+      if q then q:call("set_SpawnVolumeRatio", q:call("get_SpawnVolumeRatio") * EFFECT_DENSITY) end
+    end)
+  end
+end
+pcall(sdk.hook, sdk.find_type_definition("app.EPVExpertFootLandingCustom"):get_method("playEffect"), function() return sdk.PreHookResult.SKIP_ORIGINAL end)
+pcall(sdk.hook, sdk.find_type_definition("via.effect.script.EPVStandard"):get_method("requestEffect"), nil, function(retval) thinEffects(sdk.to_managed_object(retval)) return retval end)
+pcall(sdk.hook, sdk.find_type_definition("via.effect.script.CreatedEffectContainer"):get_method("getEPVDataElement"), function(args) thinEffects(sdk.to_managed_object(args[2])) end)
 
 re.on_script_reset(function() pcall(restoreScene) pcall(restoreLights) end)
 local cameraManager = sdk.find_type_definition("app.CameraManager")
