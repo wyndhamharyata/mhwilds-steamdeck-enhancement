@@ -12,6 +12,7 @@ local GRASS_CELL_DISTANCE = 100.0
 local FOG_START_DISTANCE = 30.0
 local FOG_DENSITY = 0.65
 local CLOUD_STEPS_WHILE_TURNING = 32
+local SHADOW_RESOLUTION = 218
 local RESTORE_DELAY = 0.15
 local FAR_DISTANCE = 100
 local FAR_UPDATE_EVERY = 8
@@ -29,6 +30,49 @@ local state = { needsScan = true, cloudTurning = false, lastMove = 0, nextFog = 
 local foliageFlags = { "DrawShadowCast", "DrawFarCascadeShadowCast", "DrawSignedDistanceField", "DrawVoxelize", "DrawEnvmap" }
 local enabledFoliagePasses = { DrawShadowCast = true, DrawFarCascadeShadowCast = false,
   DrawSignedDistanceField = true, DrawVoxelize = false, DrawEnvmap = false }
+
+local postFx = { ready = false }
+local function applyPostFx()
+  if not postFx.ready then return end
+  local t, p, ds = postFx.tone, postFx.post, postFx.display
+  t:call("setVignetting", 2)
+  t:call("setTemporalAA", 5)
+  t:call("setTemporalAAAlgorithm", 1)
+  t:call("setTemporalJitterScale", 0)
+  t:call("set_Sharpness", 0.431)
+  t:call("set_Contrast", 0.633)
+  t:call("set_VignettingBrightness", 0.291)
+  t:call("set_EV", 2.0)
+  t:call("set_EnableLocalExposure", true)
+  t:call("setLocalExposureType", 1)
+  p:call("get_FilmGrain"):call("set_BlendRate", 0)
+  ds:call("set_Gamma", 1.045)
+  ds:call("set_OutputLowerLimit", -0.141)
+  ds:call("set_OutputUpperLimit", 2.674)
+  ds:call("set_GammaForOverlay", 1.179)
+  ds:call("set_OutputLowerLimitForOverlay", -0.072)
+  ds:call("set_OutputUpperLimitForOverlay", 0.805)
+end
+
+local function initPostFx()
+  local ok, result = pcall(function()
+    local cm = sdk.get_managed_singleton("app.CameraManager")
+    local cam = cm and cm:call("get_PrimaryCamera")
+    local go = cam and cam:call("get_GameObject")
+    if not go then return false end
+    postFx.tone = go:call("getComponent(System.Type)", sdk.typeof("via.render.ToneMapping"))
+    postFx.post = go:call("getComponent(System.Type)", sdk.typeof("via.render.LDRPostProcess"))
+    local gm = sdk.get_managed_singleton("app.GraphicsManager")
+    postFx.display = gm and gm:call("get_DisplaySettings")
+    if not (postFx.tone and postFx.post and postFx.display) then return false end
+    local L, Lt = sdk.get_managed_singleton("via.render.LightRenderer"), sdk.find_type_definition("via.render.LightRenderer")
+    sdk.call_native_func(L, Lt, "set_ShadowResolution", SHADOW_RESOLUTION)
+    return true
+  end)
+  postFx.ready = ok and result == true
+  if postFx.ready then applyPostFx() end
+  return postFx.ready
+end
 
 local function isPlayer(go)
   local tr = go and go:call("get_Transform")
@@ -130,6 +174,7 @@ end
 
 re.on_application_entry("WaitForVblank", function()
   if state.needsScan then scanScene() end
+  if not postFx.ready then initPostFx() end
   local cam = sdk.get_primary_camera()
   if not cam then return end
   local t = now()
@@ -284,7 +329,7 @@ end, function(retval) return retval end)
 re.on_script_reset(function() pcall(restoreScene) pcall(restoreLights) end)
 local cameraManager = sdk.find_type_definition("app.CameraManager")
 local onLoad = cameraManager and cameraManager:get_method("onSceneLoadFadeIn")
-if onLoad then pcall(sdk.hook, onLoad, function() state.needsScan = true end) end
+if onLoad then pcall(sdk.hook, onLoad, function() state.needsScan = true postFx.ready = false end) end
 
 re.on_draw_ui(function()
   if not imgui.tree_node("Steam Deck Performance") then return end

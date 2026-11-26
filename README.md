@@ -30,6 +30,7 @@ Quest targets and useful animals are never removed. Changes save immediately.
 ## What the preset does
 
 - Keeps the render resolution, texture quality and volumetric fog.
+- Applies the tested contrast, sharpness, exposure, vignette and shadow resolution.
 - Reduces distant foliage, grass, mesh, light and shadow work.
 - Keeps nearby savannah grass visible.
 - Uses MAKO FG for smooth displayed motion. It does not raise the game's real FPS.
