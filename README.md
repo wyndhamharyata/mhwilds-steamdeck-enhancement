@@ -16,9 +16,9 @@ The installer downloads and installs REFramework, OptiScaler and MAKO FG, then w
 
 Launch the game and press **Reset Scripts** in REFramework.
 
-## Optional: Nexus object culling
+## Strongly recommended: Nexus object culling
 
-The built-in culler works without Nexus mods. The installer asks for an optional **More graphics options** ZIP; leave it blank to keep the built-in culler. For a non-interactive install, pass `--more-graphics /path/to/mod.zip`.
+The Nexus DLL culler is strongly recommended for more selective culling and better visual coverage. The built-in culler remains available as a fallback. The installer asks for the **More graphics options** ZIP; leave it blank only if you want the built-in fallback. For a non-interactive install, pass `--more-graphics /path/to/mod.zip`.
 
 To install it manually instead:
 
@@ -52,7 +52,7 @@ Quest targets and useful animals are never removed. Changes save immediately.
 ## Options
 
 - `--game-dir PATH` — use a non-default game install path.
-- `--more-graphics ZIP` — install the optional Nexus object culler without prompting.
+- `--more-graphics ZIP` — install the strongly recommended Nexus object culler without prompting.
 - `--offline` — reuse files already cached by a previous install.
 
 ## Uninstall

@@ -15,7 +15,7 @@ usage() {
 Usage: install.sh [options]
 
   --game-dir DIR       MonsterHunterWilds directory
-  --more-graphics ZIP  Optional More graphics options Nexus ZIP
+  --more-graphics ZIP  Strongly recommended More graphics options Nexus ZIP
   --offline            Skip GitHub downloads; use cached files in ~/.local/share/mhwilds-enhancement/cache
   --help               Show this help
 
@@ -60,12 +60,12 @@ log "Game: $GAME_DIR"
 log "Backup: $BACKUP"
 
 if [ -z "$MORE_GRAPHICS_ZIP" ] && [ -t 1 ]; then
-  printf 'Optional More graphics options Nexus ZIP (blank to use built-in culler): ' > /dev/tty
+  printf 'Strongly recommended More graphics options Nexus ZIP (blank to use built-in fallback): ' > /dev/tty
   read -r MORE_GRAPHICS_ZIP < /dev/tty || true
 fi
 if [ -n "$MORE_GRAPHICS_ZIP" ]; then
   [ -f "$MORE_GRAPHICS_ZIP" ] || die "ZIP not found: $MORE_GRAPHICS_ZIP"
-  log "Installing optional More graphics options culler"
+  log "Installing strongly recommended More graphics options culler"
   rm -rf "$STATE/more-graphics"
   mkdir -p "$STATE/more-graphics"
   unzip -q -o "$MORE_GRAPHICS_ZIP" -d "$STATE/more-graphics"
@@ -78,7 +78,22 @@ if [ -n "$MORE_GRAPHICS_ZIP" ]; then
 import json, pathlib, sys
 path = pathlib.Path(sys.argv[1])
 settings = json.loads(path.read_text()) if path.exists() else {}
-settings["culling_amount"] = 7
+settings.update({
+    "culling_amount": 7,
+    "mesh_lod_bias": 1,
+    "speedtree_lod_bias": 3,
+    "speedtree_min_lod": 5,
+    "texture_sampler_bias": 1.016,
+    "object_culling_ratio": 24,
+    "disable_shadows": False,
+    "shadow_quality": 218,
+    "shadow_filter": True,
+    "ambient_lighting_quality": 7,
+    "effect_density": 0.465,
+    "weapon_effects": True,
+    "disable_footprints": True,
+    "disable_all_particles": False,
+})
 path.write_text(json.dumps(settings, indent=4) + "\n")
 pathlib.Path(sys.argv[2]).write_text("7\n")
 PY
