@@ -7,7 +7,7 @@ One installer and one REFramework mod for SteamOS. It sets up the game's graphic
 In Desktop Mode:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/wyndhamharyata/mhwilds-steamdeck-enhancement/main/install.sh | bash
+curl -fsSL https://github.com/wyndhamharyata/mhwilds-steamdeck-enhancement/raw/refs/heads/main/install.sh | bash
 ```
 
 The installer fetches its own files, so no checkout is needed.
