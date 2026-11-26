@@ -1,0 +1,17 @@
+{
+    "ambient_lighting_quality": 7,
+    "culling_amount": 7,
+    "disable_all_particles": false,
+    "disable_footprints": true,
+    "disable_shadows": false,
+    "disable_tex_stream": false,
+    "effect_density": 0.4650000035762787,
+    "mesh_lod_bias": 1,
+    "object_culling_ratio": 24.0,
+    "shadow_filter": true,
+    "shadow_quality": 218,
+    "speedtree_lod_bias": 3,
+    "speedtree_min_lod": 5,
+    "texture_sampler_bias": 1.0160000324249268,
+    "weapon_effects": true
+}
