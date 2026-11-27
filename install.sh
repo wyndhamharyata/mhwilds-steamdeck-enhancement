@@ -54,6 +54,40 @@ parse_arguments() {
   done
 }
 
+find_game_directory() {
+  if [ -n "${MHWILDS_DIR:-}" ] || [ -f "$GAME_DIR/MonsterHunterWilds.exe" ]; then
+    return
+  fi
+
+  local vdf_file libraries library_path candidate
+  for vdf_file in "$HOME/.steam/steam/config/libraryfolders.vdf" "$HOME/.local/share/Steam/config/libraryfolders.vdf"; do
+    [ -f "$vdf_file" ] || continue
+    libraries="$(python3 - "$vdf_file" <<'PY'
+import re, sys
+text = open(sys.argv[1], errors="surrogateescape").read()
+for match in re.finditer(r'"path"\s+"([^"]+)"', text):
+    print(match.group(1))
+PY
+)"
+    while IFS= read -r library_path; do
+      [ -n "$library_path" ] || continue
+      candidate="$library_path/steamapps/common/MonsterHunterWilds/MonsterHunterWilds.exe"
+      if [ -f "$candidate" ]; then
+        GAME_DIR="$(dirname "$candidate")"
+        return
+      fi
+    done <<< "$libraries"
+  done
+
+  for candidate in /run/media/"$USER"/*/steamapps/common/MonsterHunterWilds \
+                   /run/media/"$USER"/*/*/steamapps/common/MonsterHunterWilds; do
+    if [ -f "$candidate/MonsterHunterWilds.exe" ]; then
+      GAME_DIR="$candidate"
+      return
+    fi
+  done
+}
+
 # A piped curl install has no local checkout. Fetch the packaged files once.
 fetch_packaged_files() {
   if [ -f "$ROOT/autorun/SteamDeckEnhancement.lua" ] && [ -f "$ROOT/config/config.ini" ]; then
@@ -73,8 +107,8 @@ check_requirements() {
     command -v "$tool" >/dev/null 2>&1 || die "Missing required tool: $tool"
   done
 
-  [ -d "$GAME_DIR" ] || die "Game directory not found: $GAME_DIR"
-  [ -f "$GAME_DIR/MonsterHunterWilds.exe" ] || die "Not a Monster Hunter Wilds directory: $GAME_DIR"
+  [ -d "$GAME_DIR" ] || die "Game directory not found: $GAME_DIR. Use --game-dir PATH."
+  [ -f "$GAME_DIR/MonsterHunterWilds.exe" ] || die "Not a Monster Hunter Wilds directory: $GAME_DIR. Use --game-dir PATH."
 
   if ps -eo comm 2>/dev/null | grep -qi '^MonsterHunter'; then
     die "Close Monster Hunter Wilds before installing"
@@ -362,6 +396,7 @@ patch_launch_options() {
 
 main() {
   parse_arguments "$@"
+  find_game_directory
   fetch_packaged_files
   check_requirements
   setup_directories

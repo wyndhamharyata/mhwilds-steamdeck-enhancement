@@ -21,6 +21,10 @@ It will download and install all of the necessary components for the mod to work
 
 It will also update the Steam launch option automatically.
 
+The installer reads Steam's library folders, so it finds the game on a microSD card. If it still cannot find the game, pass the path with `--game-dir PATH`, for example `--game-dir /run/media/deck/CARD/steamapps/common/MonsterHunterWilds`.
+
+Restart Steam once so it reads the launch option. Launch the game and press **Reset Scripts** in REFramework.
+
 ## Strongly recommended: Nexus object culling
 
 One of the key features of this mod is aggressive selective culling. Using the Nexus DLL culler is strongly recommended for more selective culling and better visual coverage. The built-in culler remains available as a fallback. 
