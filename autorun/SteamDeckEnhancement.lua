@@ -4,6 +4,7 @@
 local settings = json.load_file("SteamDeckEnhancement.json") or {}
 if settings.KeepPercent == nil then settings.KeepPercent = 25 end
 if settings.AnimalKeepPercent == nil then settings.AnimalKeepPercent = 25 end
+if settings.ThinGrass == nil then settings.ThinGrass = true end
 
 local function saveSettings()
   json.dump_file("SteamDeckEnhancement.json", settings)
@@ -12,6 +13,8 @@ end
 local DRAW_DISTANCE = 150.0
 local FOLIAGE_SDF_DISTANCE = 60.0
 local GRASS_CELL_DISTANCE = 100.0
+local GRASS_DENSITY = 0.5
+local STOCK_GRASS_DENSITY = 0.8
 local FOG_START_DISTANCE = 30.0
 local FOG_DENSITY = 0.65
 local CLOUD_STEPS_WHILE_TURNING = 32
@@ -98,6 +101,10 @@ local function applyRendererProfile()
   sdk.call_native_func(lightRenderer, lightRendererType, "set_ShadowResolution", SHADOW_RESOLUTION)
   sdk.call_native_func(lightRenderer, lightRendererType, "set_ShadowFilter", 0)
 
+  local foliageManager = sdk.get_native_singleton("via.landscape.FoliageManager")
+  local foliageManagerType = sdk.find_type_definition("via.landscape.FoliageManager")
+  sdk.call_native_func(foliageManager, foliageManagerType, "set_GlobalDensity", settings.ThinGrass and GRASS_DENSITY or STOCK_GRASS_DENSITY)
+
   local sampler = sdk.get_native_singleton("via.render.Sampler")
   local samplerType = sdk.find_type_definition("via.render.Sampler")
   sdk.call_native_func(sampler, samplerType, "set_Bias", 1.016)
@@ -181,6 +188,22 @@ local function scanClouds(scene)
   state.cloudTurning = false
 end
 
+-- Most foliage shares one transform far from where it stands. Only its bounds give the real place.
+local function readFoliagePosition(entry)
+  -- shortcut: reads the bounds once per scan because one read costs 33 microseconds, read again if foliage that streams in later lands in the wrong place.
+  if entry.x then return end
+
+  local bounds = entry.component:call("get_MergedWorldAABB")
+  if not settings.ThinGrass then
+    local position = entry.component:call("get_GameObject"):call("get_Transform"):call("get_Position")
+    bounds = { minpos = position, maxpos = position }
+  end
+
+  entry.x = (bounds.minpos.x + bounds.maxpos.x) / 2
+  entry.y = (bounds.minpos.y + bounds.maxpos.y) / 2
+  entry.z = (bounds.minpos.z + bounds.maxpos.z) / 2
+end
+
 local function scanFoliage(scene)
   local foliage = scene:call("findComponents(System.Type)", sdk.typeof("via.landscape.Foliage"))
   if not foliage then return end
@@ -189,14 +212,10 @@ local function scanFoliage(scene)
     local component = foliage:get_element(i)
     local gameObject = component:call("get_GameObject")
     local name = gameObject:call("get_Name")
-    local position = gameObject:call("get_Transform"):call("get_Position")
 
     local entry = {
       component = component,
       original = {},
-      x = position.x,
-      y = position.y,
-      z = position.z,
       sdfDisabled = false,
       draw = component:call("get_DrawDefault"),
       grassHidden = false,
@@ -208,8 +227,15 @@ local function scanFoliage(scene)
     end
 
     state.foliage[#state.foliage + 1] = entry
-    if name:match("^st101_a08_.*Grass") or name:match("^st101_a08_Inaho") then
+    local isAreaGrass = name:match("^st101_a08_.*Grass") or name:match("^st101_a08_Inaho")
+    local isGrass = name:find("Grass") or name:find("Inaho")
+    if settings.ThinGrass and isGrass or isAreaGrass then
       state.grass[#state.grass + 1] = entry
+      -- The density only thins foliage that allows it. Thinned grass still casts its full shadow, so that goes too.
+      if settings.ThinGrass then
+        component:call("set_AllowDensityCulling", true)
+        component:call("set_DrawShadowCast", false)
+      end
     end
   end
 end
@@ -303,6 +329,7 @@ local function updateFoliageSdf(cameraPosition)
   local last = math.min(state.sdfIndex + 95, #state.foliage)
   for index = state.sdfIndex, last do
     local foliage = state.foliage[index]
+    readFoliagePosition(foliage)
     local disabled = isHidden(foliage, cameraPosition, FOLIAGE_SDF_DISTANCE, 5, "sdfDisabled")
     if disabled ~= foliage.sdfDisabled then
       foliage.sdfDisabled = disabled
@@ -320,6 +347,7 @@ local function updateGrass(cameraPosition)
   local last = math.min(state.grassIndex + 95, #state.grass)
   for index = state.grassIndex, last do
     local patch = state.grass[index]
+    readFoliagePosition(patch)
     local hidden = isHidden(patch, cameraPosition, GRASS_CELL_DISTANCE, 10, "grassHidden")
     if hidden ~= patch.grassHidden then
       patch.grassHidden = hidden
@@ -342,6 +370,8 @@ local function restoreScene()
     for flag, original in pairs(foliage.original) do
       foliage.component:call("set_" .. flag, original)
     end
+    foliage.component:call("set_DrawDefault", foliage.draw)
+    foliage.component:call("set_AllowDensityCulling", false)
   end
   for _, mesh in ipairs(state.meshes or {}) do
     mesh.component:call("set_DrawDefault", mesh.draw)
@@ -376,19 +406,22 @@ local function updateCloudSteps(turning)
   state.cloudTurning = turning
 end
 
+local function allChunksUpdated()
+  return state.meshIndex > #state.meshes and state.sdfIndex > #state.foliage
+    and state.grassIndex > #state.grass
+end
+
 local function markCameraMoved(position)
   local previous = state.lastCamera
   local moved = not previous or (position.x - previous.x)^2 + (position.y - previous.y)^2
     + (position.z - previous.z)^2 > 4
   if not moved then return end
+  -- A pass takes many frames. Restarting it on every moved frame would never reach the end of the lists.
+  if previous and not allChunksUpdated() then return end
 
   state.dirty, state.sdfDirty, state.grassDirty = true, true, true
   state.meshIndex, state.sdfIndex, state.grassIndex = 1, 1, 1
-end
-
-local function allChunksUpdated()
-  return state.meshIndex > #state.meshes and state.sdfIndex > #state.foliage
-    and state.grassIndex > #state.grass
+  state.lastCamera = { x = position.x, y = position.y, z = position.z }
 end
 
 local function refreshFog(seconds)
@@ -420,10 +453,6 @@ re.on_application_entry("WaitForVblank", function()
   updateMeshes(position)
   updateFoliageSdf(position)
   updateGrass(position)
-
-  if allChunksUpdated() then
-    state.lastCamera = { x = position.x, y = position.y, z = position.z }
-  end
 
   refreshFog(seconds)
 end)
@@ -606,6 +635,8 @@ local function trackBoss(enemy, character, address)
   return info
 end
 
+local stageCheckedAt = -1
+
 local function updateBossDistance(info)
   if enemyFrameCount - info.checkedAt < 30 then return end
 
@@ -621,10 +652,17 @@ end
 sdk.hook(sdk.find_type_definition("app.EnemyCharacter"):get_method("update()"), function(args)
   if not playerX or not enemyManager or not missionManager then return end
 
-  local stageType = missionManager:getActiveStageType()
-  if stageType ~= lastStageType then resetEnemyDecisions(stageType) end
+  if stageCheckedAt ~= enemyFrameCount then
+    stageCheckedAt = enemyFrameCount
+    local stageType = missionManager:getActiveStageType()
+    if stageType ~= lastStageType then resetEnemyDecisions(stageType) end
+  end
 
+  -- Most calls are for enemies already known not to be a boss. They leave before any game call.
   local address = sdk.to_int64(args[2])
+  local known = enemyInfo[address]
+  if known and not known.isBoss then return end
+
   local character, context, enemy = enemyContextFrom(args)
   if not enemy then return end
 
@@ -700,6 +738,13 @@ re.on_draw_ui(function()
   changed, settings.AnimalKeepPercent = imgui.slider_int("Wildlife kept (%)", settings.AnimalKeepPercent, 0, 100)
   if changed then
     decidedEnemies, wildlifeAccumulator = {}, 0
+    saveSettings()
+  end
+
+  changed, settings.ThinGrass = imgui.checkbox("Thin grass", settings.ThinGrass)
+  if changed then
+    restoreScene()
+    state.needsScan, state.lastRenderer = true, 0
     saveSettings()
   end
 
